@@ -4,6 +4,7 @@ using MembershipSystem.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml.Linq;
 
 namespace MembershipSystem.Controllers
 {
@@ -23,6 +24,10 @@ namespace MembershipSystem.Controllers
         public async Task<IActionResult> Register(RegisterModel model)
         {
             if (await _context.Users.AnyAsync(u => u.Username == model.Username))
+            {
+                return BadRequest("User exist");
+            }
+            if (await _context.Users.AnyAsync(u => u.Email == model.Email))
             {
                 return BadRequest("User exist");
             }
@@ -55,8 +60,42 @@ namespace MembershipSystem.Controllers
 
             return Ok("success");
         }
+        [HttpPost("changepassword")]
+        public async Task<IActionResult> changepassword(changePassword model)
+        {
+            User user;
+            
+            user = await Find_user_by_username(model.Username);
+            if (user == null) { user = await Find_user_by_email(model.Email); }
+            if (user == null) { return Unauthorized("username or email error"); }
+            updatepassword(user, model.NewPassword);
+            return Ok("success");
+        }
 
-       //Hash
+        //use email to reset password
+
+        private async Task<bool> updatepassword(User user,string password) {
+            if (user == null)
+            {
+                return false;
+            }
+            user.PasswordHash = HashPassword(password);
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        private async Task<User> Find_user_by_email(string email) {
+           return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);        
+        }
+
+        private async Task<User> Find_user_by_username(string name)
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.Username == name);
+        }
+
+
+        //Hash
         private string HashPassword(string password)
         {
             using var sha256 = SHA256.Create();
