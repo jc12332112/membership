@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml.Linq;
+using membership.Service;
+using membership.Service.internalinterface;
 
 namespace MembershipSystem.Controllers
 {
@@ -13,10 +15,12 @@ namespace MembershipSystem.Controllers
     public class AuthController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IEmailService _emailService;
 
-        public AuthController(AppDbContext context)
+        public AuthController(AppDbContext context, IEmailService emailService)
         {
             _context = context;
+            _emailService = emailService;
         }
 
       
@@ -44,6 +48,9 @@ namespace MembershipSystem.Controllers
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
+            var subject = "Welcome to Membership System";
+            var message = $"Hello {user.Username}, thank you for registering!"; 
+            await _emailService.SendEmailAsync(user.Email, subject, message);
 
             return Ok("success");
         }
