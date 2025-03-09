@@ -18,13 +18,12 @@ namespace MembershipSystem.Controllers
             _context = context;
         }
 
-      
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterModel model)
         {
             if (await _context.Users.AnyAsync(u => u.Username == model.Username))
             {
-                return BadRequest("User exist");
+                return BadRequest("User already exists");
             }
 
             var user = new User
@@ -43,7 +42,6 @@ namespace MembershipSystem.Controllers
             return Ok("success");
         }
 
-        
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginModel model)
         {
