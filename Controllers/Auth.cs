@@ -7,6 +7,7 @@ using System.Text;
 using System.Xml.Linq;
 using membership.Service;
 using membership.Service.internalinterface;
+using membership.Models;
 
 namespace MembershipSystem.Controllers
 {
@@ -67,6 +68,71 @@ namespace MembershipSystem.Controllers
 
             return Ok("success");
         }
+
+        [HttpPost("requestpasswordchange")]
+        public async Task<IActionResult> RequestPasswordChange(RequestPasswordChangeModel model)
+        {
+            
+            var user = await Find_user_by_email(model.Email);
+            if (user == null)
+            {
+                return BadRequest("User not found");
+            }
+
+           
+            var token = GenerateToken();
+
+           
+            user.PasswordResetToken = token;
+            user.newpassword= HashPassword(model.Password);
+            user.PasswordResetTokenExpiry = DateTime.UtcNow.AddHours(1); 
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+
+          
+            var confirmationLink = Url.Action("ConfirmPasswordChange", "Auth", new { username = user.Username, token = token }, Request.Scheme);
+
+            var subject = "Confirm Password Change";
+            var message = $"Please confirm your password change by clicking this link: <a href='{confirmationLink}'>Confirm Password Change</a>";
+            await _emailService.SendEmailAsync(user.Email, subject, message);
+
+            return Ok("Password change request sent. Please check your email.");
+        }
+
+
+        [HttpGet("confirmpasswordchange")]
+        public async Task<IActionResult> ConfirmPasswordChange(string username, string token)
+        {
+            
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            if (user == null)
+            {
+                return BadRequest("Invalid user");
+            }
+
+          
+            if (user.PasswordResetToken != token || user.PasswordResetTokenExpiry < DateTime.UtcNow)
+            {
+                return BadRequest("Invalid or expired token");
+            }
+
+            // 清除令牌
+            user.PasswordResetToken = null;
+            user.PasswordHash = user.newpassword;
+            user.PasswordResetTokenExpiry = null;
+            user.newpassword = null;
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+
+            
+            return Ok("Password change confirmed. You can now set a new password.");
+        }
+        private string GenerateToken()
+        {
+            return Guid.NewGuid().ToString("N"); 
+        }
+
+        /*
         [HttpPost("changepassword")]
         public async Task<IActionResult> changepassword(changePassword model)
         {
@@ -90,7 +156,7 @@ namespace MembershipSystem.Controllers
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
             return true;
-        }
+        }*/
 
         private async Task<User> Find_user_by_email(string email) {
            return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);        

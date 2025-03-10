@@ -26,5 +26,11 @@ namespace MembershipSystem.Models
 
         [Required]
         public string PasswordHash { get; set; }
+
+        public string? PasswordResetToken { get; set; } 
+
+        public string? newpassword { get; set; }
+
+        public DateTime? PasswordResetTokenExpiry { get; set; }
     }
 }
